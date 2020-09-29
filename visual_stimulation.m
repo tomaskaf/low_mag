@@ -12,7 +12,7 @@ if nargin==0
     nFrames=600;
     disp('default, bottom up, 600frames')
 end
-%a=arduino;
+a=arduino;
 grey = 0.5;
 [window, windowRect] = PsychImaging('OpenWindow', screenNumber, grey);
 %assessing the refresh rate of our screen
@@ -48,20 +48,29 @@ end
 %%
 switch toggle
     case 'X'
-        for total=1:50  
+        for total=1:50
+             [imageTexture]=Texture_generator(stimul,bigBoardX,window);
             for index=1:10
-               [imageTexture]=Texture_generator(stimul,bigBoardX,window);
-%              writeDigitalPin(a, 'D11', 1);%until I'm able to trigger this in another way I will test the arduino controlled pulse.
-%              writeDigitalPin(a, 'D11', 0);
-               Priority(2);
-               WaitSecs('UntilTime', 1);%attempting to accurately time pauses in stimulus onset
-                
+                %[imageTexture]=Texture_generator(stimul,bigBoardX,window);
+%                 writeDigitalPin(a, 'D11', 1);%until I'm able to trigger this in another way I will test the arduino controlled pulse.
+%                 writeDigitalPin(a, 'D11', 0);
+                Priority(2);
+%                 WaitSecs('UntilTime', vbl+1);%attempting to accurately time pauses in stimulus onset
+               %vbl=Screen('Flip', window); 
+               
                for frame=1:600
                     Screen('DrawTexture', window, imageTexture(frame), [], [] ,0, [], []);
                     vbl=Screen('Flip', window, vbl+(waitframes-0.5)*ifi);
                end
-                WaitSecs('UntilTime', 4);%again attempting to accurately time pauses after the stimulus
+                
+                vbl2=WaitSecs(4);%again attempting to accurately time pauses after the stimulus
+                
+                writeDigitalPin(a, 'D11', 1);%until I'm able to trigger this in another way I will test the arduino controlled pulse.
+                writeDigitalPin(a, 'D11', 0);
+                vbl=WaitSecs(1);%again attempting to accurately time pauses after the stimulus
+                
             end
+            
         end
         Screen('CloseAll'); %Close display windows
         Priority(0);
@@ -69,10 +78,16 @@ switch toggle
         for total=1:50  
             for index=1:10
                 [imageTexture]=Texture_generator(stimul,bigBoardY,window);
+                writeDigitalPin(a, 'D11', 1);%until I'm able to trigger this in another way I will test the arduino controlled pulse.
+                writeDigitalPin(a, 'D11', 0);
+                Priority(2);
+                WaitSecs('UntilTime', 1);%attempting to accurately time pauses in stimulus onset
+
                 for frame=1:600
                     Screen('DrawTexture', window, imageTexture(frame), [], [] ,0, [], []);
                     vbl=Screen('Flip', window, vbl+(waitframes-0.5)*ifi);
                 end
+                    WaitSecs('UntilTime', 4);%again attempting to accurately time pauses after the stimulus
             end
         end
 end
@@ -80,93 +95,6 @@ end
 end    
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    %     index
-%     writeDigitalPin(a, 'D11', 1);
-%     pause(0.1)
-%     writeDigitalPin(a, 'D11', 0);
-%     pause(0.9)
-%     for n=1:600
-%         Screen('Close');
-%         switch stimul
-%             case 'up'
-%         imageTexture = Screen('MakeTexture', window, bigBoardX(:,:,n));
-%             case 'down'
-%         imageTexture = Screen('MakeTexture', window, bigBoardX(:,:,abs(n-601)));
-%             case 'left'
-%         imageTexture = Screen('MakeTexture', window, bigBoardY(:,:,n));
-%             case 'right'
-%         imageTexture = Screen('MakeTexture', window, bigBoardY(:,:,abs(n-601)));
-%        
-%         end
-%         
-%         Screen('DrawTexture', window, imageTexture, [], [] ,0, [], []);
-%         Screen('Flip', window);
-%         
-%     end
-%     %pause(4)
-%end
-
-%     writeDigitalPin(a, 'D11', 0);
-%     writeDigitalPin(a, 'D11', 1);
-% 
-% 
-% for index=1:10
-%     for n=1:600
-%         Screen('Close');
-%         imageTexture = Screen('MakeTexture', window, bigBoardX(:,:,abs(n-601)));
-%         Screen('DrawTexture', window, imageTexture, [], [] ,0, [], []);
-%         Screen('Flip', window);
-%     end
-% end
-% 
-% 
-%     writeDigitalPin(a, 'D11', 0);
-%     writeDigitalPin(a, 'D11', 1);
-% 
-% 
-% for index=1:10
-% 
-%     
-%     for n=1:600
-%         Screen('Close');
-%         imageTexture = Screen('MakeTexture', window, bigBoardY(:,:,n));
-%         Screen('DrawTexture', window, imageTexture, [], [] ,0, [], []);
-%         Screen('Flip', window);
-%     end
-% end
-% 
-%     writeDigitalPin(a, 'D11', 0);
-%     writeDigitalPin(a, 'D11', 1);
-% 
-% 
-% for index=1:10
-%     for n=1:600
-%         Screen('Close');
-%         imageTexture = Screen('MakeTexture', window, bigBoardY(:,:,abs(n-601)));
-%         c
-%     end
-% end
-%     writeDigitalPin(a, 'D11', 0);
-%     pause(5);
-%     writeDigitalPin(a, 'D11', 1);
-% end
-% 
-%     writeDigitalPin(a, 'D11', 0);
-%     pause(5);
-%     writeDigitalPin(a, 'D11', 1);
-
-
 
 
 function [imageTexture]=Texture_generator(stimul,bigBoard,window)

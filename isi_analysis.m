@@ -1,7 +1,6 @@
-
-fps=30
-[position_end]=syncVector
-
+clear all
+%[position_end]=syncVector;
+[spacing,chunk,duration,fps,image]=parameter_screener;
 
 
 
@@ -10,58 +9,25 @@ fps=30
 meanChunk=chunk/(fps/10);
 [sizex,sizey]=size(image);
 
-%mmovproc=zeros([sizex,sizey,meanChunk]);
-%temp=zeros([sizex,sizey,meanChunk,length(position_end)]);
-%preMean=zeros([550,800,chunk,length(position_end)],'single');
-%%
-% figure
-% hold on
+[raw_mov,Log,LogF]=movieloader(chunk,meanChunk,sizex,sizey); 
 
-FourD_out=zeros([sizex,sizey,meanChunk,length(position_end)]);
-%%
-BigTemp=zeros(sizex,sizey,meanChunk);
-f=waitbar(0,'total');
-for index2=1:(length(position_end))
-    waitbar(index2/length(position_end))
-    clear temp
-    g=waitbar(0,'current iteration');
-
-    bins=(1:chunk/meanChunk:chunk);
-    count=0;
-    for i=1:chunk
-        if ismember(i,bins)
-        count=count+1;
-        waitbar(count/meanChunk)
-        tempM=zeros(sizex,sizey);
-            for j=0:(chunk/meanChunk)-1
-                 temp=double(imread(list_trials((position_end(index2)+(i-1)+j)).name));
-                 tempM=tempM+temp;
-            end 
-         BigTemp(:,:,count)=BigTemp(:,:,count)+tempM;
-        end
-    end
-    
-    close(g)
-end
-close(f)
-    %%%%%%meanpix
-mmovproc = BigTemp-mean(BigTemp,3);
-close(f)
-
+%meanextraction
+mov=raw_mov-(mean(raw_mov,3));
  %%
-[output_mov,output_map]=plotter(mmovproc,5)
+[output_mov,output_map]=plotter(mov,1.5)
  
 %% 
-function [output_mov,output_map]=plotter(mmovproc,sigma)
+function [output_mov,output_map]=plotter(mov,sigma)
 close all 
-gauss=imgaussfilt3(mmovproc,sigma);
-gauss=detrend(gauss);
+gauss=imgaussfilt(mov,sigma);
+gauss=movmean(gauss,3,3);
+gauss=detrend3(gauss);
 output_mov=figure, imshow3D(gauss)
 
 output_map=figure
 
 [fig_phase]=retinotopy(gauss)
-title('gaussian filtering')
+title('gaussian filtering, movmean 3 in time ')
 % subplot(2,1,2)
 % [fig_phase]=retinotopy(mov)
 % title('moving mean')
@@ -88,11 +54,13 @@ fig_phase=imagesc(reshape(phase./(2*pi), [sizex,sizey])); colormap jet
 end
 
 %%
-function [position_end]=syncVector %finds stimulus start times 
+function [position_end]=syncVector(fps) %finds stimulus start times 
 
-    clear all
+    %clear all
+if nargin==0
     fps=30;
-    list_trials=dir('*tif');
+end
+    list_trials=dir('*tiff');
     x=zeros([length(list_trials),1],'single');
     f=waitbar(0,'loading synchronizing vector');
     for index_trial=1:length(list_trials)
@@ -133,15 +101,18 @@ function [position_end]=syncVector %finds stimulus start times
     position_end(:,end)=[]; %in order to avoid running out of matrix
 end
 %%
-function [spacing,chunk]=parameter_screener(fps) %%determine the parameters of the recording
+function [spacing,chunk,duration,fps,image]=parameter_screener(fps) %%determine the parameters of the recording
 
-    clear all
+if nargin==0
     fps=30;
+end
+
     list_trials=dir('*tiff');
+    duration=length(list_trials)-100;
     x=zeros([1000,1],'single');
     f=waitbar(0,'checking frames 101-1100 for timing parameters');
-    for index_trial=101:1100 %skipping first 100 to avoid the weirdness that might be present
-        waitbar((index_trial-100)/1001)
+    for index_trial=101:2100 %skipping first 100 to avoid the weirdness that might be present
+        waitbar((index_trial-100)/2001)
                 image=imread(list_trials(index_trial).name);
                 x(index_trial-100,1)=mean(image(:));  
     end
@@ -163,34 +134,99 @@ function [spacing,chunk]=parameter_screener(fps) %%determine the parameters of t
     end
     spacing=round((position_end(1,2)-position_end(1,1))/fps);
         if spacing==10
-            chunk=fps*spacing-fps;
+            chunk=fps*spacing;
             disp('stimulus:flash')
         elseif spacing==15
-            chunk=fps*spacing-fps;
+            chunk=fps*spacing;
 
             disp('stimulus:bar')
         elseif spacing==30
-            chunk=fps*spacing-fps;
+            chunk=fps*spacing;
             disp('stimulus:moving object')
+        else chunk=fps*spacing;
         end
 end
 %%
-function [position_end]=movieloader(fps,chunk,spacing) 
+function [raw_mov,Log,LogF]=movieloader(chunk,meanChunk,sizex,sizey) 
 
-    clear all
-    list_trials=dir('*tif');
+    list_trials=dir('*tiff');
     f=waitbar(0,'loading movie, searching for trial start ques');
-    for index_trial=100:length(list_trials)%will skip the first 100 frames due to spinview's missing capacity to add leading zeros
+    %set every switch to default
+    HIGHedge=0;
+    LOWedge=0;
+    WRITE="False";
+    count=0;
+    TRUElogger=0;
+    FALSElogger=0;
+    i=0;
+    %set up movie length optimizing and preallocate memory
+    bins=(1:chunk/meanChunk:length(list_trials));
+    %raw_mov=zeros(sizex,sizey,meanChunk); %this is how it should be
+    raw_mov=zeros(sizex,sizey,130);%forcing this because wtf, the timing is weird
+    
+    for index_trial=101:length(list_trials) %will skip the first 100 frames due to spinview's missing capacity to add leading zeros
         waitbar((index_trial-100)/(length(list_trials)-100))
+                image_prev=imread(list_trials(index_trial-1).name);
+                pre_current=mean(image_prev(:));
                 image=imread(list_trials(index_trial).name);
-                x=mean(image(:));  
+                current=mean(image(:));
+                slope=pre_current/current;
+                if slope>1.1 %meaning we're at the end of a LED blink
+                    LOWedge=1;
+                    HIGHedge=0;
+                elseif slope<0.9 %LED blink starts
+                    LOWedge=0;
+                    HIGHedge=1;
+                end
+                
+                if LOWedge==1 && HIGHedge==0 %setting WRITE to true if LED turns off
+                    WRITE="True";
+                else
+                    WRITE="False"; %As LED turns on setting WRITE to false.
+                end
+                
+                switch WRITE
+                    case "True"
+                    i=i+1;
+                        
+                        
+                        
+                    TRUElogger=TRUElogger+1;%some logging for debugging
+                    Log(TRUElogger)=index_trial;
+                    
+                    switch i
+                        case 1
+                            tempM=zeros(sizex,sizey);
+                            temp=double(imread(list_trials(index_trial).name));
+                            tempM=tempM+temp;
+                        case 2
+                               temp=double(imread(list_trials(index_trial).name));
+                               tempM=tempM+temp;
+                        case 3
+                            count=count+1;
+                            if count>130 
+                                WRITE="False";
+                            end
+                            temp=double(imread(list_trials(index_trial).name));
+                            tempM=tempM+temp; 
+                            try
+                            raw_mov(:,:,count)=raw_mov(:,:,count)+tempM;
+                            i=0;
+                            end
+                            
+                    end
+                                
+                    
+                    case "False"
+                        count=0;
+                        FALSElogger=FALSElogger+1;
+                        LogF(FALSElogger)=index_trial;
+                end
+                
+
+    end   
+      
+                    
+       close(f)             
     end
-    close(f)
-    
-    
-    
-    
-    
-    
-    
-end
+   
