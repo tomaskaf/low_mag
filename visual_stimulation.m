@@ -1,4 +1,4 @@
-function visual_stimulation(nFrames,stimul,repetitions)
+function [timeStamps]=visual_stimulation(nFrames,stimul,repetitions)
 close all
 PsychDefaultSetup(2);
 %choosing the screen n2 where stim should be presented in fullscreen mode
@@ -38,9 +38,9 @@ end
 %%
 switch toggle
     case 'X'
-        stimulus_player(stimul,bigBoardX,window,repetitions)
+       [timeStamps]=stimulus_player(a,stimul,bigBoardX,window,repetitions,nFrames,ifi,vbl,waitframes)
     case 'Y'
-        stimulus_player(stimul,bigBoardY,window,repetitions)
+       [timeStamps]=stimulus_player(a,stimul,bigBoardY,window,repetitions,nFrames,ifi,vbl,waitframes)
 end
 
 end    
@@ -66,8 +66,8 @@ function [imageTexture]=Texture_generator(stimul,bigBoard,window)
     end
 end
 
-function stimulus_player(stimul,bigBoard,window,repetitions)
-
+function [timeStamps]=stimulus_player(a,stimul,bigBoard,window,repetitions,nFrames,ifi,vbl,waitframes)
+               timeStamps=zeros(1,repetitions);
             [imageTexture]=Texture_generator(stimul,bigBoard,window);%a nFrames long movie is transfered into "textures"
             for index=1:repetitions
                 Priority(2);
@@ -77,11 +77,16 @@ function stimulus_player(stimul,bigBoard,window,repetitions)
                     vbl=Screen('Flip', window, vbl+(waitframes-0.5)*ifi);%showing the image in the middle of the refresh window
                end
                 
-                vbl_postStim=WaitSecs(4);% attempting to accurately time pauses after the stimulus with a timestamp
                 
-                writeDigitalPin(a, 'D11', 1);%until I'm able to trigger this in another way I will test the arduino controlled pulse.
-                writeDigitalPin(a, 'D11', 0);
-                vbl_postBlink=WaitSecs(1);%again attempting to accurately time pauses after the stimulus
+%                 writeDigitalPin(a, 'D11', 1);%until I'm able to trigger this in another way I will test the arduino controlled pulse.
+%                 writeDigitalPin(a, 'D11', 0);
+                if index==1
+                    startTime=GetSecs;
+                    
+                else
+                    timeStamps(1,index)=GetSecs-startTime;
+                    WaitSecs('UntilTime',startTime+(10*(index-1)));
+                end
                 
             end
             
