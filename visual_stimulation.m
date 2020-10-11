@@ -12,7 +12,13 @@ if nargin==0%just for ease of use during testing
     nFrames=600;
     disp('default, bottom up, 600frames')
 end
-a=arduino;%sorry kaspar
+% a=arduino;%sorry kaspar
+
+dq = daq("ni");
+ctr = addoutput(dq,"Dev1", "ctr0", "PulseGeneration");
+ctr.Terminal
+
+
 grey = 0.5;
 [window, windowRect] = PsychImaging('OpenWindow', screenNumber, grey);
 %assessing the refresh rate of our screen
@@ -38,9 +44,9 @@ end
 %%
 switch toggle
     case 'X'
-       [timeStamps]=stimulus_player(a,stimul,bigBoardX,window,repetitions,nFrames,ifi,vbl,waitframes)
+       [timeStamps]=stimulus_player(a,stimul,bigBoardX,window,repetitions,nFrames,ifi,vbl,waitframes,dq)
     case 'Y'
-       [timeStamps]=stimulus_player(a,stimul,bigBoardY,window,repetitions,nFrames,ifi,vbl,waitframes)
+       [timeStamps]=stimulus_player(a,stimul,bigBoardY,window,repetitions,nFrames,ifi,vbl,waitframes,dq)
 end
 
 end    
@@ -66,12 +72,14 @@ function [imageTexture]=Texture_generator(stimul,bigBoard,window)
     end
 end
 
-function [timeStamps]=stimulus_player(a,stimul,bigBoard,window,repetitions,nFrames,ifi,vbl,waitframes)
+function [timeStamps]=stimulus_player(a,stimul,bigBoard,window,repetitions,nFrames,ifi,vbl,waitframes,dq)
                timeStamps=zeros(1,repetitions);
             [imageTexture]=Texture_generator(stimul,bigBoard,window);%a nFrames long movie is transfered into "textures"
             for index=1:repetitions
                 Priority(2);
-
+                start(dq);
+                WaitSecs('UntilTime',stim_start+0.01);
+                stop(dq);
                for frame=1:nFrames
                     Screen('DrawTexture', window, imageTexture(frame), [], [] ,0, [], []);%loading the correct frame from the preloaded texture file
                     vbl=Screen('Flip', window, vbl+(waitframes-0.5)*ifi);%showing the image in the middle of the refresh window

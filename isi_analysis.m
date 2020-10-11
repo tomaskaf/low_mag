@@ -106,7 +106,7 @@ function [spacing,chunk,duration,fps,image]=parameter_screener(fps) %%determine 
 if nargin==0
     fps=30;
 end
-
+%%
     list_trials=dir('*tiff');
     duration=length(list_trials)-100;
     x=zeros([1000,1],'single');
@@ -148,7 +148,7 @@ end
 end
 %%
 function [raw_mov,Log,LogF]=movieloader(chunk,meanChunk,sizex,sizey) 
-
+%%
     list_trials=dir('*tiff');
     f=waitbar(0,'loading movie, searching for trial start ques');
     %set every switch to default
@@ -162,7 +162,7 @@ function [raw_mov,Log,LogF]=movieloader(chunk,meanChunk,sizex,sizey)
     %set up movie length optimizing and preallocate memory
     bins=(1:chunk/meanChunk:length(list_trials));
     %raw_mov=zeros(sizex,sizey,meanChunk); %this is how it should be
-    raw_mov=zeros(sizex,sizey,130);%forcing this because wtf, the timing is weird
+    raw_mov=zeros(sizex,sizey,320);%forcing this because wtf, the timing is weird
     
     for index_trial=101:length(list_trials) %will skip the first 100 frames due to spinview's missing capacity to add leading zeros
         waitbar((index_trial-100)/(length(list_trials)-100))
