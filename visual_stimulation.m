@@ -44,9 +44,9 @@ end
 %%
 switch toggle
     case 'X'
-       [timeStamps]=stimulus_player(a,stimul,bigBoardX,window,repetitions,nFrames,ifi,vbl,waitframes,dq)
+       [timeStamps]=stimulus_player(stimul,bigBoardX,window,repetitions,nFrames,ifi,vbl,waitframes,dq)
     case 'Y'
-       [timeStamps]=stimulus_player(a,stimul,bigBoardY,window,repetitions,nFrames,ifi,vbl,waitframes,dq)
+       [timeStamps]=stimulus_player(stimul,bigBoardY,window,repetitions,nFrames,ifi,vbl,waitframes,dq)
 end
 
 end    
@@ -72,32 +72,39 @@ function [imageTexture]=Texture_generator(stimul,bigBoard,window)
     end
 end
 
-function [timeStamps]=stimulus_player(a,stimul,bigBoard,window,repetitions,nFrames,ifi,vbl,waitframes,dq)
+function [timeStamps]=stimulus_player(stimul,bigBoard,window,repetitions,nFrames,ifi,vbl,waitframes,dq)
                timeStamps=zeros(1,repetitions);
             [imageTexture]=Texture_generator(stimul,bigBoard,window);%a nFrames long movie is transfered into "textures"
             for index=1:repetitions
                 Priority(2);
+                stim_start=GetSecs;
                 start(dq);
                 WaitSecs('UntilTime',stim_start+0.01);
                 stop(dq);
-               for frame=1:nFrames
-                    Screen('DrawTexture', window, imageTexture(frame), [], [] ,0, [], []);%loading the correct frame from the preloaded texture file
-                    vbl=Screen('Flip', window, vbl+(waitframes-0.5)*ifi);%showing the image in the middle of the refresh window
-               end
-                
-                
-%                 writeDigitalPin(a, 'D11', 1);%until I'm able to trigger this in another way I will test the arduino controlled pulse.
-%                 writeDigitalPin(a, 'D11', 0);
-                if index==1
-                    startTime=GetSecs;
-                    
-                else
-                    timeStamps(1,index)=GetSecs-startTime;
-                    WaitSecs('UntilTime',startTime+(10*(index-1)));
+                for rounds=1:5
+                   for frame=1:nFrames
+                        Screen('DrawTexture', window, imageTexture(frame), [], [] ,0, [], []);%loading the correct frame from the preloaded texture file
+                        vbl=Screen('Flip', window, vbl+(waitframes-0.5)*ifi);%showing the image in the middle of the refresh window
+                   end
+                   
                 end
-                
+%                 Blank_time=putBlank(Screen);
+                stim_end=WaitSecs('UntilTime',vbl+10);
+                timeStamps(index,1)=stim_start;
+                timeStamps(index,2)=stim_end;
             end
-            
         Screen('CloseAll'); %Close display windows
         Priority(0);
-end
+            end
+            
+
+
+
+         function [Blank_time]=putBlank(Screen)
+             
+                 color = 0.5;
+
+             Screen('FillRect',window,[0 0 color 1]);
+             %Screen('DrawTexture', obj.win, obj.masktex);
+             Blank_time=Screen('Flip',window);
+         end  
